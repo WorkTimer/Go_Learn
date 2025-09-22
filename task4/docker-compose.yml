@@ -1,9 +1,12 @@
+version: '3.8'
+
 services:
+  # PostgreSQL数据库
   postgres:
     image: postgres:15-alpine
-    container_name: students_postgres
+    container_name: blog_postgres
     environment:
-      POSTGRES_DB: students
+      POSTGRES_DB: blog
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
@@ -12,36 +15,59 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d students"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d blog"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - students_network
+      - blog_network
+
+  # 博客应用
+  blog-app:
+    build: .
+    container_name: blog_app
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: 123456
+      DB_NAME: blog
+      JWT_SECRET: ktjnCkMI6GgMN3w6Nein+BFSl7YThGzlmwuomDSvkzo=
+      SERVER_PORT: 8080
+      GIN_MODE: release
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - blog_network
 
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: students_pgadmin
+    container_name: blog_pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin123
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
-      - "8080:80"
+      - "8081:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - postgres
     restart: unless-stopped
     networks:
-      - students_network
+      - blog_network
 
 volumes:
   postgres_data:
   pgadmin_data:
 
 networks:
-  students_network:
+  blog_network:
     driver: bridge
