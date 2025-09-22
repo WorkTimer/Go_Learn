@@ -38,3 +38,4 @@ task3/main
 
 # Log files
 *.log
+postgres_data/
